@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nyayavault"
+version = "0.1.0"
+description = "NyayaVault — grounded legal research over a verified Indian legal corpus (AI for Lawyers, HackIndia 2026)"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["nyayavault*"]
+
+[tool.vercel]
+entrypoint = "nyayavault.wsgi:application"
