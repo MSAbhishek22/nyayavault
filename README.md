@@ -1,3 +1,19 @@
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,50:1f6feb,100:8957e5&height=190&section=header&text=NyayaVault&fontSize=44&fontColor=ffffff&animation=fadeIn&desc=Grounded%20AI%20legal%20research%20over%20real%20Indian%20law&descSize=16"/>
+
+> **📖 The Story** Ask a generic AI a legal question and it may quote a section that doesn't exist — in law, a confident wrong answer is worse than no answer. NyayaVault was built for AI for Lawyers (HackIndia), and later submitted to SLAY, to do legal research the slow, honest way: grounded in the actual texts of Indian law.
+>
+> **🎯 The Problem** People facing a legal question need research they can verify against the statute itself, not hallucinated sections and invented case law.
+>
+> **👥 Who It's For** Lawyers, law students, and citizens trying to understand their rights before they pay for advice.
+>
+> **🔑 The USP** Research grounded in real Indian law — the Constitution, the IT Act, the Consumer Protection Act and the Contract Act — instead of a model's memory.
+>
+> **🚀 What's Next** Wider coverage of Indian statutes and deeper citation checking on every answer.
+>
+> **🔗 Live: [nyayavault-iota.vercel.app](https://nyayavault-iota.vercel.app) · 🎥 Demo: [YouTube](https://youtu.be/by4iPbj2i5w)**
+
+---
+
 # NyayaVault — Your first legal question, answered from the statute itself
 
 **AI for Lawyers, HackIndia 2026** · Track: **AI Legal Research** · Prize pool: **₹2,00,000**
