@@ -204,7 +204,7 @@ const stars = PROVISIONS.map((p, i) => {
 const linkIdx = CROSS_LINKS.map(([a, b]) => [PROVISIONS.findIndex(p => p.rel === a), PROVISIONS.findIndex(p => p.rel === b)]).filter(([a, b]) => a >= 0 && b >= 0);
 
 // The 2D canvas renderer is replaced by the Three.js module after
-// </script> (same stars, same links, same interactions — real WebGL 3D).
+// the Three.js module script below (same stars, same links, same interactions — real WebGL 3D).
 let selected = -1;
 setTimeout(() => {
   if (!window.__sky3DReady) {
