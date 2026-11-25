@@ -72,10 +72,13 @@ body{margin:0;background:var(--parchment);color:var(--ink);
 main{max-width:1160px;margin:0 auto;padding:0 16px 48px}
 .card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px}
 h3{font-family:Georgia,serif;margin:0 0 10px}
-.sky{margin:6px 0 16px;padding:0;overflow:hidden}
+.sky{margin:6px 0 16px;padding:0;overflow:hidden;position:relative}
 #sky{width:100%;height:300px;display:block;background:var(--oxblood-deep);border-radius:var(--radius);cursor:grab}
 #sky:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 .sky-caption{font-size:.85em;color:var(--muted);margin:8px 4px 0}
+.sky-label{position:absolute;transform:translateY(-50%);font-size:11px;color:rgba(247,234,208,.9);text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;white-space:nowrap}
+.scroll-cue{text-align:center;margin:6px 0 0;font-weight:700}
+.scroll-cue a{color:var(--brass-deep)}
 .grid{display:grid;grid-template-columns:.9fr 1.6fr 1fr;gap:16px}
 @media(max-width:900px){.grid{grid-template-columns:1fr}}
 .act h4{margin:12px 0 4px;font-size:.85em;letter-spacing:.04em;text-transform:uppercase;color:var(--oxblood)}
@@ -107,6 +110,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,.act li:focus-vi
 .samples pre{white-space:pre-wrap;font:inherit;background:var(--answer-bg);border-radius:10px;padding:12px;margin-top:10px}
 footer{text-align:center;color:var(--muted);font-size:.85em;padding:8px 16px 24px}
 </style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 </head>
 <body>
 <header class="hero">
@@ -114,6 +118,7 @@ footer{text-align:center;color:var(--muted);font-size:.85em;padding:8px 16px 24p
   <p>Your first legal question, answered from the statute itself.</p>
   <p class="disclaimer">General legal information, not legal advice. Every answer cites the Act and section it comes from — and says plainly when the corpus has no answer.</p>
 </header>
+<p class="scroll-cue"><a href="#sky">Scroll ↓ — the constellation, the shelves, and ask the corpus</a></p>
 <div class="modebar">
   <span id="mode-badge" class="badge mock">[mock] offline stand-in — no live model call</span>
   <span id="mode-line" class="muted">Loading…</span>
@@ -198,64 +203,15 @@ const stars = PROVISIONS.map((p, i) => {
 });
 const linkIdx = CROSS_LINKS.map(([a, b]) => [PROVISIONS.findIndex(p => p.rel === a), PROVISIONS.findIndex(p => p.rel === b)]).filter(([a, b]) => a >= 0 && b >= 0);
 
-const canvas = document.getElementById("sky");
-const ctx = canvas.getContext("2d");
-let rotY = 0.4, rotX = 0.1, selected = -1;
-const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-function project(s) {
-  const cy = Math.cos(rotY), sy = Math.sin(rotY), cx = Math.cos(rotX), sx = Math.sin(rotX);
-  let x = s.x * cy - s.z * sy, z = s.x * sy + s.z * cy, y = s.y;
-  y = y * cx - z * sx; z = y * sx + z * cx;
-  const f = 420, scale = f / (f + z + 160);
-  return {x: 500 + x * scale, y: 150 + y * scale, scale, z};
-}
-function draw() {
-  ctx.clearRect(0, 0, 1000, 300);
-  const pts = stars.map(project);
-  ctx.strokeStyle = "rgba(232,194,104,0.35)"; ctx.lineWidth = 1;
-  for (const [a, b] of linkIdx) {
-    ctx.beginPath(); ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[b].x, pts[b].y); ctx.stroke();
+// The 2D canvas renderer is replaced by the Three.js module after
+// </script> (same stars, same links, same interactions — real WebGL 3D).
+let selected = -1;
+setTimeout(() => {
+  if (!window.__sky3DReady) {
+    document.getElementById("sky-caption").textContent =
+      "The 3D constellation needs WebGL — use the statute shelves below, which list every provision.";
   }
-  pts.forEach((pt, i) => {
-    const r = Math.max(2, 4.5 * pt.scale);
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = stars[i].colour; ctx.fill();
-    if (i === selected) { ctx.beginPath(); ctx.arc(pt.x, pt.y, r + 4, 0, Math.PI * 2); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); }
-    ctx.fillStyle = "rgba(247,234,208,0.9)"; ctx.font = "11px system-ui, sans-serif";
-    ctx.fillText(stars[i].p.short, pt.x + r + 4, pt.y + 4);
-  });
-  const sel = selected >= 0 ? stars[selected].p : null;
-  document.getElementById("sky-caption").textContent = sel
-    ? "Selected: " + sel.title + " — " + sel.citation + ". Press Enter or click to open it in the shelves."
-    : "The corpus as a constellation: four Acts and one coverage note, seventeen provisions, twelve cross-references. Drag to turn it; click a star to read its provision. The list below works the same way.";
-}
-let dragging = false, lastX = 0, lastY = 0;
-canvas.addEventListener("pointerdown", e => { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); });
-canvas.addEventListener("pointermove", e => {
-  if (!dragging) return;
-  rotY += (e.clientX - lastX) * 0.005; rotX = Math.max(-0.6, Math.min(0.6, rotX + (e.clientY - lastY) * 0.003));
-  lastX = e.clientX; lastY = e.clientY; draw();
-});
-canvas.addEventListener("pointerup", e => {
-  if (Math.abs(e.clientX - lastX) < 3 && Math.abs(e.clientY - lastY) < 3) {
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (1000 / rect.width), my = (e.clientY - rect.top) * (300 / rect.height);
-    const pts = stars.map(project);
-    let best = -1, bestD = 22;
-    pts.forEach((pt, i) => { const d = Math.hypot(pt.x - mx, pt.y - my); if (d < bestD) { bestD = d; best = i; } });
-    if (best >= 0) { selected = best; openProvision(stars[best].p.rel); draw(); }
-  }
-  dragging = false;
-});
-canvas.addEventListener("keydown", e => {
-  if (e.key === "ArrowLeft") { rotY -= 0.1; draw(); }
-  else if (e.key === "ArrowRight") { rotY += 0.1; draw(); }
-  else if (e.key === "ArrowUp") { rotX = Math.max(-0.6, rotX - 0.05); draw(); }
-  else if (e.key === "ArrowDown") { rotX = Math.min(0.6, rotX + 0.05); draw(); }
-  else if (e.key === "Enter" && selected >= 0) { openProvision(stars[selected].p.rel); }
-});
-if (!reduced) setInterval(() => { if (!dragging) { rotY += 0.004; draw(); } }, 50);
-draw();
+}, 5000);
 
 // --- shelves ---
 const shelves = document.getElementById("shelves");
@@ -272,7 +228,7 @@ async function openProvision(rel) {
   const data = await res.json();
   document.querySelectorAll("#shelves li").forEach(li => li.classList.toggle("selected", li.dataset.rel === rel));
   const idx = PROVISIONS.findIndex(p => p.rel === rel);
-  if (idx >= 0) { selected = idx; draw(); }
+  if (idx >= 0) { selected = idx; if (window.__skyHighlight) window.__skyHighlight(idx); }
   if (!data.ok) { document.getElementById("doc-preview").textContent = "Could not load that provision."; return; }
   const body = data.body.replace(/^# .*$/m, "").trim();
   document.getElementById("doc-preview").innerHTML =
@@ -372,6 +328,175 @@ document.getElementById("reset-budget").addEventListener("click", async () => {
       : "<p class='muted'>Could not load that sample.</p>";
   });
 })();
+</script>
+
+<script type="module">
+// NyayaVault — the authority constellation as real Three.js (J8).
+// Same data as the old 2D canvas (global `stars`, `linkIdx`, PROVISIONS),
+// same interactions: drag to turn, click a star to open its provision,
+// arrow keys rotate, Enter opens the selected provision. Draws on first
+// load with no click; auto-turns unless reduced motion is preferred.
+// If WebGL or the CDN is unavailable, the watchdog in the classic script
+// explains that the shelves below list every provision.
+import * as THREE from 'three';
+
+const DEFAULT_CAPTION = "The corpus as a constellation: four Acts and one coverage note, seventeen provisions, twelve cross-references. Drag to turn it; click a star to read its provision. The list below works the same way.";
+
+function setCaption(text) {
+  const el = document.getElementById("sky-caption");
+  if (el) el.textContent = text;
+}
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById("sky"), antialias: true, alpha: false
+  });
+} catch (err) {
+  renderer = null;
+}
+if (!renderer) {
+  setCaption("The 3D constellation needs WebGL — use the statute shelves below, which list every provision.");
+} else {
+  const canvas = document.getElementById("sky");
+  const stage = canvas.parentElement; // .sky section
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x3f1119);
+  const camera = new THREE.PerspectiveCamera(40, 1000 / 300, 1, 2000);
+  camera.position.set(0, 0, 380);
+  camera.lookAt(0, 0, 0);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+  const group = new THREE.Group();
+  scene.add(group);
+
+  // Stars: one sphere per provision, coloured by Act, at the deterministic
+  // positions computed by the classic script (same layout as before).
+  const starMeshes = stars.map((s) => {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(3.6, 14, 14),
+      new THREE.MeshBasicMaterial({ color: s.colour })
+    );
+    mesh.position.set(s.x, s.y, s.z);
+    mesh.userData.index = s.i;
+    group.add(mesh);
+    return mesh;
+  });
+
+  // Cross-reference links.
+  const linkGeo = new THREE.BufferGeometry();
+  const linkPts = [];
+  linkIdx.forEach(([a, b]) => {
+    linkPts.push(
+      new THREE.Vector3(stars[a].x, stars[a].y, stars[a].z),
+      new THREE.Vector3(stars[b].x, stars[b].y, stars[b].z)
+    );
+  });
+  linkGeo.setFromPoints(linkPts);
+  group.add(new THREE.LineSegments(linkGeo,
+    new THREE.LineBasicMaterial({ color: 0xe8c268, transparent: true, opacity: 0.35 })));
+
+  // Selection ring around the chosen star.
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(7.5, 0.9, 10, 40),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
+  ring.visible = false;
+  group.add(ring);
+
+  // Short labels, projected each frame (same labels the 2D canvas drew).
+  const labels = stars.map((s) => {
+    const div = document.createElement("div");
+    div.className = "sky-label";
+    div.textContent = s.p.short;
+    stage.appendChild(div);
+    return div;
+  });
+
+  let selectedIdx = -1;
+  function highlight(i) {
+    selectedIdx = i;
+    const s = stars[i];
+    ring.position.set(s.x, s.y, s.z);
+    ring.visible = true;
+    setCaption("Selected: " + s.p.title + " — " + s.p.citation + ". Press Enter or click to open it in the shelves.");
+  }
+  window.__skyHighlight = highlight;
+
+  let rotY = 0.4, rotX = 0.1, dragging = false, lastX = 0, lastY = 0, moved = 0;
+  canvas.addEventListener("pointerdown", (e) => {
+    dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    rotY += dx * 0.005;
+    rotX = Math.max(-0.6, Math.min(0.6, rotX + dy * 0.003));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  function pick(e) {
+    const rect = canvas.getBoundingClientRect();
+    pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObjects(starMeshes, false)[0];
+    return hit ? hit.object.userData.index : -1;
+  }
+  canvas.addEventListener("pointerup", (e) => {
+    dragging = false;
+    if (moved < 6) {
+      const i = pick(e);
+      if (i >= 0) { highlight(i); openProvision(stars[i].p.rel); }
+    }
+  });
+  canvas.addEventListener("pointercancel", () => { dragging = false; });
+  canvas.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") rotY -= 0.1;
+    else if (e.key === "ArrowRight") rotY += 0.1;
+    else if (e.key === "ArrowUp") rotX = Math.max(-0.6, rotX - 0.05);
+    else if (e.key === "ArrowDown") rotX = Math.min(0.6, rotX + 0.05);
+    else if (e.key === "Enter" && selectedIdx >= 0) openProvision(stars[selectedIdx].p.rel);
+  });
+
+  function resize() {
+    const w = stage.clientWidth || 1000;
+    renderer.setSize(w, 300, false);
+    camera.aspect = w / 300;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  const clock = new THREE.Clock();
+  const v = new THREE.Vector3();
+  function tick() {
+    requestAnimationFrame(tick);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    if (!dragging && !reduced) rotY += dt * 0.08;
+    group.rotation.y = rotY;
+    group.rotation.x = rotX;
+    renderer.render(scene, camera);
+    // Project labels.
+    starMeshes.forEach((mesh, i) => {
+      const div = labels[i];
+      v.copy(mesh.position).applyEuler(group.rotation);
+      v.project(camera);
+      if (v.z > 1) { div.style.display = "none"; return; }
+      const rect = canvas.getBoundingClientRect();
+      div.style.display = "block";
+      div.style.left = ((v.x * 0.5 + 0.5) * rect.width + 12) + "px";
+      div.style.top = ((-v.y * 0.5 + 0.5) * rect.height) + "px";
+    });
+    if (!window.__sky3DReady) window.__sky3DReady = true;
+  }
+  tick();
+}
 </script>
 </body>
 </html>
